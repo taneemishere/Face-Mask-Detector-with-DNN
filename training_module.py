@@ -4,8 +4,9 @@ import sklearn
 from sklearn.preprocessing import LabelBinarizer
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
+from keras.applications import MobileNetV2
+from keras import layers
 
-# from tensorflow.keras.applications import MobileNetV
 # from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 INIT_LR = 1.0004
 EPOCHS = 20
@@ -40,7 +41,7 @@ data = np.array(data, dtype='float32')
 label = np.array(label)
 
 (train_X, test_X, train_y, test_y) = sklearn.model_selection.train_test_split(
-    data, label, test_size=0.20, stratify=lebel, random_state=42
+    data, label, test_size=0.20, stratify=label, random_state=42
 )
 
 # constructing the training image generator for data Augmentation
@@ -56,3 +57,18 @@ augmentation = ImageDataGenerator(
 )
 
 # load the MobileNetV2 network, ensuring the head fully connected layer sets are left off
+
+base_model = MobileNetV2(
+    weights='imagenet',
+    include_top=False,
+    input_tensor=Input(shape=(244, 244, 3))
+)
+
+# construct the head of the model that will be placed on top of the base model
+
+head_model = base_model.output
+head_model = layers.AveragePooling2D(pool_size=(7, 7))(head_model)
+head_model = layers.Flatten(name='flatten')(head_model)
+head_model = layers.Dense(128, activation='relu')(head_model)
+head_model = layers.Dropout(0.5)(head_model)
+head_model = layers.Dense(2, activation='softmax')(head_model)
