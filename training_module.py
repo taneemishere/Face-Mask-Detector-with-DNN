@@ -84,3 +84,32 @@ model = Model(inputs=base_model.input, output=head_model)
 
 for layer in base_model.layers:
     layer.trainable = False
+
+print('model is  compiling.....')
+
+optimizer = keras.optimizers.Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+# train the head of the network
+print('training the head of the network....')
+H = model.fit(
+    augmentation.flow(train_X, train_y, batch_size=BS),
+    steps_per_epoch=len(train_X) // BS,
+    validation_data=(test_X, test_y),
+    validation_steps=len(test_X) // BS,
+    epochs=EPOCHS
+)
+
+print('evaluating the network....')
+predictions = model.predict(test_X, batch_size=BS)
+
+# for each image in the test set we need to find the index of the
+# label with corresponding largest predicted probability
+predictions = np.argmax(predictions, axis=1)
+
+# show nicely formatted classification report
+print(sklearn.metrics.classification_report(
+    test_y.argmax(axis=1),
+    predictions,
+    target_names=lb.classes_)
+)
