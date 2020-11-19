@@ -1,4 +1,5 @@
 import os
+from imutils import paths
 from tensorflow import keras
 import sklearn
 from sklearn.preprocessing import LabelBinarizer
@@ -7,6 +8,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.applications import MobileNetV2
 from keras import layers
 from keras import Model
+import matplotlib.pyplot as plt
 
 # from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 INIT_LR = 1.0004
@@ -113,3 +115,20 @@ print(sklearn.metrics.classification_report(
     predictions,
     target_names=lb.classes_)
 )
+
+# serialize the model to disk
+print('\nsaving face mask detector model....')
+model.save('face-mask-detector.model', save_format='h5')
+
+# plot the training loss and accuracy
+N = EPOCHS
+plt.style.use('ggplot')
+plt.figure()
+plt.plot(np.arrange(0, N), H.history['loss'], label='train_loss')
+plt.plot(np.arrange(0, N), H.history['val_loss'], label='val_loss')
+plt.plot(np.arrange(0, N), H.history['accuracy'], label='train_acc')
+plt.plot(np.arrange(0, N), H.history['val_accuracy'], label='val_acc')
+plt.xlabel("No. of Epochs")
+plt.ylabel("Loss/Accuracy")
+plt.legend(loc="lower left")
+plt.savefig("plot_model.png")
