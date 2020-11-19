@@ -6,6 +6,7 @@ import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications import MobileNetV2
 from keras import layers
+from keras import Model
 
 # from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 INIT_LR = 1.0004
@@ -72,3 +73,14 @@ head_model = layers.Flatten(name='flatten')(head_model)
 head_model = layers.Dense(128, activation='relu')(head_model)
 head_model = layers.Dropout(0.5)(head_model)
 head_model = layers.Dense(2, activation='softmax')(head_model)
+
+# place the head Fully Connected model on top of the base model (this will become the actual
+# model that we will train)
+
+model = Model(inputs=base_model.input, output=head_model)
+
+# loop over all layers in the base model and freeze them so they will
+# *not* be updated during the first training process
+
+for layer in base_model.layers:
+    layer.trainable = False
