@@ -18,7 +18,7 @@ BATCH_SIZE = 32
 DIRECTORY = r"C:\Users\Hp\Projects\Machine Learning\Face-Mask-Detector-with-DNN\data"
 CATEGORIES = ['with_mask', 'without_mask']
 
-print('loading images....')
+print('Loading images....')
 
 data = []
 label = []
@@ -35,20 +35,23 @@ for category in CATEGORIES:
         label.append(category)
 
 # perform one-hot encoding on the labels
+print('\nPerforming Label Binarizer....')
 label_binarizer = LabelBinarizer()
 label = label_binarizer.fit_transform(label)
 label = keras.utils.to_categorical(label)
 
 # converting to numpy arrays
+print('\nConverting to numpy arrays....')
 data = np.array(data, dtype='float32')
 label = np.array(label)
 
+print('\nPerforming train test split....')
 (train_X, test_X, train_y, test_y) = sklearn.model_selection.train_test_split(
     data, label, test_size=0.20, stratify=label, random_state=42
 )
 
 # constructing the training image generator for data Augmentation
-
+print('\nPerforming augmentation on Image data generator....')
 augmentation = ImageDataGenerator(
     rotation_range=20,
     zoom_range=0.15,
@@ -60,7 +63,7 @@ augmentation = ImageDataGenerator(
 )
 
 # load the MobileNetV2 network, ensuring the head fully connected layer sets are left off
-
+print('\nBuilding base_model....')
 base_model = MobileNetV2(
     weights='imagenet',
     include_top=False,
@@ -68,7 +71,7 @@ base_model = MobileNetV2(
 )
 
 # construct the head of the model that will be placed on top of the base model
-
+print('\nBuilding head_model....')
 head_model = base_model.output
 head_model = layers.AveragePooling2D(pool_size=(7, 7))(head_model)
 head_model = layers.Flatten(name='flatten')(head_model)
@@ -78,7 +81,7 @@ head_model = layers.Dense(2, activation='softmax')(head_model)
 
 # place the head Fully Connected model on top of the base model (this will become the actual
 # model that we will train)
-
+print('\nConnecting base and head model....')
 model = Model(inputs=base_model.input, output=head_model)
 
 # loop over all layers in the base model and freeze them so they will
@@ -87,13 +90,12 @@ model = Model(inputs=base_model.input, output=head_model)
 for layer in base_model.layers:
     layer.trainable = False
 
-print('model is  compiling.....')
-
+print('\nComiling the model....')
 optimizer = keras.optimizers.Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
 # train the head of the network
-print('training the head of the network....')
+print('\nTraining the head of the network....')
 H = model.fit(
     augmentation.flow(train_X, train_y, batch_size=BS),
     steps_per_epoch=len(train_X) // BS,
@@ -102,7 +104,7 @@ H = model.fit(
     epochs=EPOCHS
 )
 
-print('evaluating the network....')
+print('\nEvaluating the network....')
 predictions = model.predict(test_X, batch_size=BS)
 
 # for each image in the test set we need to find the index of the
@@ -110,6 +112,7 @@ predictions = model.predict(test_X, batch_size=BS)
 predictions = np.argmax(predictions, axis=1)
 
 # show nicely formatted classification report
+print('\nModel report....\n')
 print(sklearn.metrics.classification_report(
     test_y.argmax(axis=1),
     predictions,
@@ -121,6 +124,7 @@ print('\nsaving face mask detector model....')
 model.save('face-mask-detector.model', save_format='h5')
 
 # plot the training loss and accuracy
+print('\nMaking plots ready for model....')
 N = EPOCHS
 plt.style.use('ggplot')
 plt.figure()
