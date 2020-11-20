@@ -3,6 +3,7 @@ from imutils import paths
 from tensorflow import keras
 import sklearn
 from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications import MobileNetV2
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 
 # from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 INIT_LR = 1.0004
-EPOCHS = 20
+EPOCHS = 5
 BATCH_SIZE = 32
 
 DIRECTORY = r"C:\Users\Hp\Projects\Machine Learning\Face-Mask-Detector-with-DNN\data"
@@ -46,7 +47,7 @@ data = np.array(data, dtype='float32')
 label = np.array(label)
 
 print('\nPerforming train test split....')
-(train_X, test_X, train_y, test_y) = sklearn.model_selection.train_test_split(
+(train_X, test_X, train_y, test_y) = train_test_split(
     data, label, test_size=0.20, stratify=label, random_state=42
 )
 
@@ -67,7 +68,8 @@ print('\nBuilding base_model....')
 base_model = MobileNetV2(
     weights='imagenet',
     include_top=False,
-    input_tensor=Input(shape=(244, 244, 3))
+    # input_tensor=Input(shape=(244, 244, 3))
+    input_tensor=layers.Input(shape=(244, 244, 3))
 )
 
 # construct the head of the model that will be placed on top of the base model
@@ -97,15 +99,15 @@ model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accurac
 # train the head of the network
 print('\nTraining the head of the network....')
 H = model.fit(
-    augmentation.flow(train_X, train_y, batch_size=BS),
-    steps_per_epoch=len(train_X) // BS,
+    augmentation.flow(train_X, train_y, batch_size=BATCH_SIZE),
+    steps_per_epoch=len(train_X) // BATCH_SIZE,
     validation_data=(test_X, test_y),
-    validation_steps=len(test_X) // BS,
+    validation_steps=len(test_X) // BATCH_SIZE,
     epochs=EPOCHS
 )
 
 print('\nEvaluating the network....')
-predictions = model.predict(test_X, batch_size=BS)
+predictions = model.predict(test_X, batch_size=BATCH_SIZE)
 
 # for each image in the test set we need to find the index of the
 # label with corresponding largest predicted probability
@@ -116,7 +118,7 @@ print('\nModel report....\n')
 print(sklearn.metrics.classification_report(
     test_y.argmax(axis=1),
     predictions,
-    target_names=lb.classes_)
+    target_names=label_binarizer.classes_)
 )
 
 # serialize the model to disk
