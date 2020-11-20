@@ -1,29 +1,31 @@
 import os
+import numpy as np
 from imutils import paths
 from tensorflow import keras
-import sklearn
-from sklearn.preprocessing import LabelBinarizer
-from sklearn.model_selection import train_test_split
-import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications import MobileNetV2
 from keras import layers
 from keras import Model
+import sklearn
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
-# from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 INIT_LR = 1.0004
-EPOCHS = 5
+EPOCHS = 20
 BATCH_SIZE = 32
 
+# Our directory of dataset and the categories (labels)
 DIRECTORY = r"C:\Users\Hp\Projects\Machine Learning\Face-Mask-Detector-with-DNN\data"
 CATEGORIES = ['with_mask', 'without_mask']
 
 print('Loading images....')
 
+# List for data [features] and labels
 data = []
 label = []
 
+# Getting the dataset
 for category in CATEGORIES:
     path = os.path.join(DIRECTORY, category)
     for img in os.listdir(path):
@@ -35,23 +37,29 @@ for category in CATEGORIES:
         data.append(image)
         label.append(category)
 
-# perform one-hot encoding on the labels
+# Perform one-hot encoding on the labels
 print('\nPerforming Label Binarizer....')
 label_binarizer = LabelBinarizer()
 label = label_binarizer.fit_transform(label)
 label = keras.utils.to_categorical(label)
 
-# converting to numpy arrays
+# Converting data and labels to numpy arrays
 print('\nConverting to numpy arrays....')
 data = np.array(data, dtype='float32')
 label = np.array(label)
 
+# Split the data into training and testing sets
 print('\nPerforming train test split....')
 (train_X, test_X, train_y, test_y) = train_test_split(
     data, label, test_size=0.20, stratify=label, random_state=42
 )
 
-# constructing the training image generator for data Augmentation
+# Constructing the training image generator for Data Augmentation
+"""
+The data augmentation make some changes in the current images, like 
+some changes in the pixel values and create a whole new image, or rotate it 
+and many more.
+"""
 print('\nPerforming augmentation on Image data generator....')
 augmentation = ImageDataGenerator(
     rotation_range=20,
@@ -63,16 +71,16 @@ augmentation = ImageDataGenerator(
     fill_mode='nearest'
 )
 
-# load the MobileNetV2 network, ensuring the head fully connected layer sets are left off
+# Load the MobileNetV2 network, ensuring the head fully connected
+# layer sets are left off
 print('\nBuilding base_model....')
 base_model = MobileNetV2(
     weights='imagenet',
     include_top=False,
-    # input_tensor=Input(shape=(244, 244, 3))
     input_tensor=layers.Input(shape=(244, 244, 3))
 )
 
-# construct the head of the model that will be placed on top of the base model
+# Build the head of model that will be stacked on top of the base model
 print('\nBuilding head_model....')
 head_model = base_model.output
 head_model = layers.AveragePooling2D(pool_size=(7, 7))(head_model)
@@ -81,22 +89,22 @@ head_model = layers.Dense(128, activation='relu')(head_model)
 head_model = layers.Dropout(0.5)(head_model)
 head_model = layers.Dense(2, activation='softmax')(head_model)
 
-# place the head Fully Connected model on top of the base model (this will become the actual
-# model that we will train)
+# Place the head model (Fully Connected) on top of base model
+# (this will become the actual model that we will train)
 print('\nConnecting base and head model....')
 model = Model(inputs=base_model.input, output=head_model)
 
-# loop over all layers in the base model and freeze them so they will
-# *not* be updated during the first training process
-
+# Iterate over all layers in the base model and freeze them so they WON'T
+# be updated during the first training process
 for layer in base_model.layers:
     layer.trainable = False
 
+# Compile the model
 print('\nComiling the model....')
 optimizer = keras.optimizers.Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-# train the head of the network
+# Train the network
 print('\nTraining the head of the network....')
 H = model.fit(
     augmentation.flow(train_X, train_y, batch_size=BATCH_SIZE),
@@ -106,14 +114,15 @@ H = model.fit(
     epochs=EPOCHS
 )
 
+# Do prediction of the test set
 print('\nEvaluating the network....')
 predictions = model.predict(test_X, batch_size=BATCH_SIZE)
 
-# for each image in the test set we need to find the index of the
+# For each image in the test set we need to find the index of the
 # label with corresponding largest predicted probability
 predictions = np.argmax(predictions, axis=1)
 
-# show nicely formatted classification report
+# Print nicely formatted classification report of the model
 print('\nModel report....\n')
 print(sklearn.metrics.classification_report(
     test_y.argmax(axis=1),
@@ -121,20 +130,20 @@ print(sklearn.metrics.classification_report(
     target_names=label_binarizer.classes_)
 )
 
-# serialize the model to disk
+# Save the model for later use
 print('\nsaving face mask detector model....')
-model.save('face-mask-detector.model', save_format='h5')
+model.save('face-mask-detector.h5')
 
-# plot the training loss and accuracy
+# Plot the training loss and accuracy
 print('\nMaking plots ready for model....')
 N = EPOCHS
 plt.style.use('ggplot')
 plt.figure()
-plt.plot(np.arrange(0, N), H.history['loss'], label='train_loss')
-plt.plot(np.arrange(0, N), H.history['val_loss'], label='val_loss')
-plt.plot(np.arrange(0, N), H.history['accuracy'], label='train_acc')
-plt.plot(np.arrange(0, N), H.history['val_accuracy'], label='val_acc')
-plt.xlabel("No. of Epochs")
+plt.plot(np.arange(0, N), H.history['loss'], label='train_loss')
+plt.plot(np.arange(0, N), H.history['val_loss'], label='val_loss')
+plt.plot(np.arange(0, N), H.history['accuracy'], label='train_acc')
+plt.plot(np.arange(0, N), H.history['val_accuracy'], label='val_acc')
+plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
 plt.savefig("plot_model.png")
