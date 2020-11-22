@@ -2,6 +2,7 @@ import cv2
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow import keras
 from imutils.video import VideoStream
 import imutils
 import numpy as np
@@ -48,6 +49,21 @@ def detect_and_predict(frame, face_model, mask_model):
             face = cv2.resize(face, (244, 244))
             face = img_to_array(face)
             face = preprocess_input(face)
+
+            # add the face and bounding boxes to the respective lists
+            faces.append(face)
+            locations.append(start_x, start_y, end_x, end_y)
+
+    # making predictions only if at least one face was detected
+    if len(faces) > 0:
+        # for faster inference we'll make batch predictions on *all*
+        # faces at the same time rather than one-by-one predictions
+        # in the above `for` loop
+        faces = np.array(faces, dtype='float32')
+        predictions = mask_model.predict(faces, batch_size=32)
+
+    # return a 2-tuple of the face locations and their predictions
+    return locations, predictions
 
 
 # load the face detection model
