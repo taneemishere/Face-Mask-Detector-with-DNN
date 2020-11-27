@@ -2,7 +2,6 @@ import cv2
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow import keras
 from imutils.video import VideoStream
 import imutils
 import numpy as np
@@ -12,13 +11,13 @@ def detect_and_predict(frame, face_model, mask_model):
     # grab the dimensions of the frame and then construct a blob from it
     (height, width) = frame.shape[:2]
     blob = cv2.dnn.blobFromImage(
-        frame, 1.0, (244, 244), 104.0, 177.0, 123.0
+        frame, 1.0, (244, 244), 104, 177, 123
     )
     # pass the blob(binary form of frames) to the network and obtain the
     # the face detections
     face_model.setInput(blob)
     detection = face_model.forward()
-    print('\nShape of detections: ', detection.shape)
+    # print('\nShape of detections: ', detection.shape)
     # initialize our list of faces, their corresponding locations,
     # and the list of predictions from our face mask network
     faces = []
@@ -52,7 +51,7 @@ def detect_and_predict(frame, face_model, mask_model):
 
             # add the face and bounding boxes to the respective lists
             faces.append(face)
-            locations.append(start_x, start_y, end_x, end_y)
+            locations.append((start_x, start_y, end_x, end_y))
 
     # making predictions only if at least one face was detected
     if len(faces) > 0:
