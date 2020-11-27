@@ -89,3 +89,33 @@ while True:
     # detect faces in the frame and determine if they are wearing a
     # face mask or not
     (locations, predictions) = detect_and_predict(frame, face_model, mask_model)
+
+    # iterate over the detected face locations and their predictions
+    for box, pred in zip(locations, predictions):
+        # unpack the bounding box and predictions
+        start_x, start_y, end_x, end_y = box
+        with_mask, without_mask = pred
+
+        # determine the class label and color we'll use to draw
+        # the bounding box and text
+        label = "Mask" if with_mask > without_mask else "No Mask"
+        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
+
+        # include the probability in label
+        label = "{}: {:.2f}%".format(label, max(with_mask, without_mask) * 100)
+
+        # display the label and bounding box rectangle on the output frame
+        cv2.putText(frame, label, (start_x, start_y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
+        cv2.rectangle(frame, (start_x, start_y), (end_x, end_y), color, 2)
+
+    # show the output frame
+    cv2.imshow("Mask Detector", frame)
+    key = cv2.waitKey(1) & 0xFF
+
+    # if the `q` key was pressed, break from the loop
+    if key == ord("q"):
+        break
+
+cv2.destroyAllWindows()
+webcam.stop()
